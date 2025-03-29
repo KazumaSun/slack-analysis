@@ -24,9 +24,8 @@ docker-compose up
 ```
 
 次のリンクで動作確認
-[フロントエンド](http://localhost:3000)
-[バックエンド](http://localhost:8080/ping)
-
+- [フロントエンド](http://localhost:3000)
+- [バックエンド](http://localhost:8080/ping)
 
 ## 新規プロジェクト作成メモ
 
