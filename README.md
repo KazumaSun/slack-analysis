@@ -10,6 +10,7 @@
 
 - Docker
 - Docker Compose
+- npm
 
 ### 起動手順
 
@@ -17,6 +18,8 @@
 # プロジェクトをクローン
 git clone https://github.com/KazumaSun/slack-analysis
 cd slack-analysis
+cd frontend
+npm install
 
 # 起動
 docker compose build
