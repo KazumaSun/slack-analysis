@@ -27,9 +27,9 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 
-	"your-project/backend/handler"
-	"your-project/backend/repository"
-	"your-project/backend/usecase"
+	"backend/handler"
+	"backend/repository"
+	"backend/usecase"
 )
 
 func main() {

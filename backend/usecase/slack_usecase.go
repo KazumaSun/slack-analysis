@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
-	"slack-analysis/backend/repository"
+	"backend/repository"
 )
 
 type SlackUsecase struct {
