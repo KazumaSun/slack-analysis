@@ -1,4 +1,6 @@
 version: '3.8'
+env_file: .env
+
 services:
   backend:
     build:
@@ -15,6 +17,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=slackdb
+      - SLACK_API_TOKEN=${SLACK_API_TOKEN}
 
   frontend:
     build:

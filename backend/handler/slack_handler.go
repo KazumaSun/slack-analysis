@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"your-project/backend/usecase"
+	"slack-analysis/backend/usecase"
 )
 
 type SlackHandler struct {

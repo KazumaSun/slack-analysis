@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"your-project/backend/repository"
+	"slack-analysis/backend/repository"
 )
 
 type SlackUsecase struct {

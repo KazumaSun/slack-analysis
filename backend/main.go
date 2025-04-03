@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"fmt"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -33,10 +34,15 @@ import (
 
 func main() {
 	// 環境変数から設定を取得
-	dbConnectionString := os.Getenv("DATABASE_URL")
-	if dbConnectionString == "" {
-		dbConnectionString = "postgres://postgres:postgres@db:5432/slack_analysis?sslmode=disable"
-	}
+	// 環境変数から設定を取得
+	dbHost := os.Getenv("DB_HOST")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+
+	// データベース接続文字列の構築
+	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", 
+									dbUser, dbPassword, dbHost, dbName)
 	
 	slackToken := os.Getenv("SLACK_API_TOKEN")
 	if slackToken == "" {
