@@ -44,7 +44,9 @@ func main() {
 	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", 
 									dbUser, dbPassword, dbHost, dbName)
 	
-	slackToken := os.Getenv("SLACK_API_TOKEN")
+	slackTokenBot := os.Getenv("SLACK_API_TOKEN_BOT")
+	slackTokenUser := os.Getenv("SLACK_API_TOKEN_USER")
+
 	if slackToken == "" {
 		log.Fatal("SLACK_API_TOKEN environment variable is required")
 	}
@@ -58,7 +60,7 @@ func main() {
 	
 	// 依存関係の初期化
 	repo := repository.NewRepository(db)
-	slackUsecase := usecase.NewSlackUsecase(repo, slackToken)
+	slackUsecase := usecase.NewSlackUsecase(repo, slackTokenBot)
 	slackHandler := handler.NewSlackHandler(slackUsecase)
 	
 	// Ginルーターの設定
