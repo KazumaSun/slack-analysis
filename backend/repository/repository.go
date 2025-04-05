@@ -1,0 +1,125 @@
+// backend/repository/repository.go
+package repository
+
+import (
+	"database/sql"
+	"log"
+)
+
+type Repository struct {
+	db *sql.DB
+}
+
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{db: db}
+}
+
+// SaveUser はユーザー情報をDBに保存します
+func (r *Repository) SaveUser(user User) error {
+	query := `
+		INSERT INTO users (user_key, user_name, grade, team_key)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (user_key) DO UPDATE
+		SET user_name = $2, grade = $3, team_key = $4
+	`
+	
+	_, err := r.db.Exec(query, user.UserKey, user.UserName, user.Grade, user.TeamKey)
+	if err != nil {
+		log.Printf("Failed to save user: %v", err)
+		return err
+	}
+	
+	return nil
+}
+
+// SaveTeam はチームとチャンネルの対応をDBに保存します
+func (r *Repository) SaveTeam(team Team) error {
+	query := `
+		INSERT INTO teams (channel_id, channel_name) -- id を INSERT 文から除外
+		VALUES ($1, $2)                             -- 引数も $1, $2 に
+		ON CONFLICT (channel_id) DO UPDATE          -- コンフリクトは channel_id でチェック (UNIQUE 制約が必要)
+		SET channel_name = $2                       -- channel_name を更新
+	`
+
+	// Exec に渡す引数から team.ID を削除
+	_, err := r.db.Exec(query, team.ChannelID, team.ChannelName)
+	if err != nil {
+		log.Printf("Failed to save team (channel_id: %s): %v", team.ChannelID, err) // ログに詳細追加
+		return err
+	}
+
+	return nil
+}
+
+// GetAllUsers はすべてのユーザー情報を取得します
+func (r *Repository) GetAllUsers() ([]User, error) {
+	query := `SELECT id, user_key, user_name, grade, team_key FROM users`
+	
+	rows, err := r.db.Query(query)
+	if err != nil {
+		log.Printf("Failed to get users: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var users []User
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.ID, &user.UserKey, &user.UserName, &user.Grade, &user.TeamKey); err != nil {
+			log.Printf("Failed to scan user: %v", err)
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	// rows.Err() をチェックして、ループ中のエラーを確認 (重要)
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating team rows: %v", err)
+		return nil, err
+	}
+
+	// データがない場合、空のスライスを返す（nil ではなく）
+	if users == nil {
+		return []User{}, nil // nil ではなく空スライスを返すのが一般的
+	}
+	
+	return users, nil
+}
+
+// GetAllTeams はすべてのチーム情報を取得します (新規追加)
+func (r *Repository) GetAllTeams() ([]Team, error) {
+	query := `SELECT id, channel_id, channel_name FROM teams ORDER BY id ASC` // ORDER BY を追加すると良いかも
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		log.Printf("Failed to get teams: %v", err)
+		return nil, err // エラーを返す
+	}
+	defer rows.Close()
+
+	var teams []Team
+	for rows.Next() {
+		var team Team
+		// Scan するカラムの順番を SELECT 文に合わせる
+		if err := rows.Scan(&team.ID, &team.ChannelID, &team.ChannelName); err != nil {
+			log.Printf("Failed to scan team: %v", err)
+			return nil, err // エラーを返す
+		}
+		teams = append(teams, team)
+	}
+
+	// rows.Err() をチェックして、ループ中のエラーを確認 (重要)
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating team rows: %v", err)
+		return nil, err
+	}
+
+
+	// データがない場合、空のスライスを返す（nil ではなく）
+	if teams == nil {
+		return []Team{}, nil // nil ではなく空スライスを返すのが一般的
+	}
+
+
+	return teams, nil
+}
