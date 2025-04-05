@@ -15,6 +15,9 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=slackdb
+      - SLACK_API_TOKEN_BOT=${SLACK_API_TOKEN_BOT}
+      - SLACK_API_TOKEN_USER=${SLACK_API_TOKEN_USER}
+
 
   frontend:
     build:
