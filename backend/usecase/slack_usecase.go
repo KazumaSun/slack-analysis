@@ -13,13 +13,15 @@ import (
 
 type SlackUsecase struct {
 	repo       *repository.Repository
-	slackToken string
+	slackTokenUser string
+	slackTokenBot string
 }
 
-func NewSlackUsecase(repo *repository.Repository, slackToken string) *SlackUsecase {
+func NewSlackUsecase(repo *repository.Repository, slackTokenUser string, slackTokenBot string) *SlackUsecase {
 	return &SlackUsecase{
 		repo:       repo,
-		slackToken: slackToken,
+		slackTokenUser: slackTokenUser,
+		slackTokenBot: slackTokenBot,
 	}
 }
 
@@ -91,7 +93,7 @@ func (u *SlackUsecase) fetchSlackUsers() ([]repository.SlackUser, error) {
 		return nil, err
 	}
 	
-	req.Header.Add("Authorization", "Bearer "+u.slackToken)
+	req.Header.Add("Authorization", "Bearer "+u.slackTokenUser)
 	
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -129,7 +131,7 @@ func (u *SlackUsecase) fetchSlackChannels() ([]repository.SlackChannel, error) {
 		return nil, err
 	}
 	
-	req.Header.Add("Authorization", "Bearer "+u.slackToken)
+	req.Header.Add("Authorization", "Bearer "+u.slackTokenBot)
 	
 	// パブリックチャンネルのみ取得
 	q := req.URL.Query()
