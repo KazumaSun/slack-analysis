@@ -24,40 +24,45 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const usersResponse = await fetch(`${API_BASE_URL}/users`);
-        const usersData = await usersResponse.json();
-        console.log("Users Data:", usersData);
-        setUsers(usersData);
+        // ユーザー情報を取得
+        const usersResponse = await fetch(`${API_BASE_URL}/users`)
+        if (!usersResponse.ok) throw new Error("Failed to fetch users")
+        const usersData = await usersResponse.json()
+        setUsers(usersData)
 
-        const channelsResponse = await fetch(`${API_BASE_URL}/channels`);
-        const channelsData = await channelsResponse.json();
+        // チャンネル情報を取得
+        const channelsResponse = await fetch(`${API_BASE_URL}/channels`)
+        if (!channelsResponse.ok) throw new Error("Failed to fetch channels")
+        const channelsData = await channelsResponse.json()
+        const channelsArray = Array.isArray(channelsData.channels) ? channelsData.channels : []
+        setChannels(channelsArray)
 
-        // channelsData の中に channels プロパティがある場合に対応
-        const channelsArray = Array.isArray(channelsData.channels) ? channelsData.channels : [];
-        console.log("Channels Data:", channelsArray);
-        setChannels(channelsArray);
-
-        const historyData: { [key: string]: History[] } = {};
+        // 各チャンネルの投稿履歴を取得
+        const historyData: { [key: string]: History[] } = {}
         for (const channel of channelsArray) {
-          const historyResponse = await fetch(`${API_BASE_URL}/history/${channel.channel_id}`);
-          const channelHistory = await historyResponse.json();
-          historyData[channel.channel_id] = channelHistory;
+          const historyResponse = await fetch(`${API_BASE_URL}/history/${channel.channel_id}`)
+          if (!historyResponse.ok) {
+            console.warn(`Failed to fetch history for channel ${channel.channel_id}`)
+            continue
+          }
+          const channelHistory = await historyResponse.json()
+          historyData[channel.channel_id] = channelHistory
         }
-        setHistory(historyData);
+        setHistory(historyData)
       } catch (error) {
-        console.error("データの取得に失敗しました:", error);
+        console.error("データの取得に失敗しました:", error)
       }
-    };
+    }
 
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
   // チャンネルごとのユーザー一覧を生成
   const channelUsers = channels.map((channel) => {
     const usersInChannel = history[channel.channel_id]?.map((historyItem) => {
       const user = users.find((u) => u.user_key === historyItem.user_id)
       return user ? user.user_name : null
-    }).filter((userName): userName is string => userName !== null) || [] // historyが未定義の場合に空配列を使用
+    }).filter((userName): userName is string => userName !== null) || []
     return { ...channel, users: Array.from(new Set(usersInChannel)) }
   })
 
@@ -67,7 +72,7 @@ export default function UsersPage() {
       const response = await fetch(`${API_BASE_URL}/users/init`, { method: "POST" })
       if (response.ok) {
         alert("ユーザー情報が初期化されました")
-        window.location.reload();
+        window.location.reload()
       } else {
         console.error("ユーザー情報初期化に失敗しました:", await response.text())
       }
@@ -82,7 +87,7 @@ export default function UsersPage() {
       const response = await fetch(`${API_BASE_URL}/channels/init`, { method: "POST" })
       if (response.ok) {
         alert("チャンネル情報が初期化されました")
-        window.location.reload();
+        window.location.reload()
       } else {
         console.error("チャンネル情報初期化に失敗しました:", await response.text())
       }
