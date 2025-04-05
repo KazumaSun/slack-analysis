@@ -20,10 +20,10 @@ import {
 } from "@mui/material"
 import dayjs from "dayjs"
 import isBetween from "dayjs/plugin/isBetween"
+import { Channel, History, User } from "@/type"
 
 dayjs.extend(isBetween)
 import { SelectChangeEvent } from "@mui/material/Select"
-import { mockChannels, mockHistory, mockUsers } from "@/mockData"
 import {
   LineChart,
   Line,
@@ -37,23 +37,78 @@ import {
 type ActivityScale = "day" | "week" | "month"
 
 export default function DashboardPage() {
-  const [selectedChannel, setSelectedChannel] = useState<string>(mockChannels[0].channel_id)
-  const [filteredHistory, setFilteredHistory] = useState<typeof mockHistory>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [selectedChannel, setSelectedChannel] = useState<string>("")
+  const [filteredHistory, setFilteredHistory] = useState<History[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [suggestedTimes, setSuggestedTimes] = useState<string[]>([])
   const [activityData, setActivityData] = useState<{ time: string; count: number }[]>([])
   const [scale, setScale] = useState<ActivityScale>("day")
 
+  // ユーザー情報とチャンネル情報を取得
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // ユーザー情報を取得
+        const usersResponse = await fetch("http://localhost:8080/users")
+        if (!usersResponse.ok) throw new Error("Failed to fetch users")
+        const usersData = await usersResponse.json()
+        setUsers(usersData.users)
+
+        // チャンネル情報を取得
+        const channelsResponse = await fetch("http://localhost:8080/channels")
+        if (!channelsResponse.ok) throw new Error("Failed to fetch channels")
+        const channelsData = await channelsResponse.json()
+        const channelsArray = Array.isArray(channelsData.channels) ? channelsData.channels : []
+        setChannels(channelsArray)
+
+        // デフォルトで最初のチャンネルを選択
+        if (channelsArray.length > 0) {
+          setSelectedChannel(channelsArray[0].channel_id)
+        }
+      } catch (error) {
+        console.error("データの取得に失敗しました:", error)
+      }
+    }
+
+    fetchInitialData()
+  }, [])
+
+  // 選択されたチャンネルの投稿履歴を取得
+  useEffect(() => {
+    if (!selectedChannel) return
+
+    const fetchChannelHistory = async () => {
+      try {
+        const historyResponse = await fetch(`http://localhost:8080/history/${selectedChannel}`)
+        if (!historyResponse.ok) throw new Error(`Failed to fetch history for channel ${selectedChannel}`)
+        const channelHistory = await historyResponse.json()
+        setFilteredHistory(channelHistory.messages)
+      } catch (error) {
+        console.error("履歴の取得に失敗しました:", error)
+      }
+    }
+
+    fetchChannelHistory()
+  }, [selectedChannel])
+
   // ユーザーIDをユーザー名に変換
   const getUserName = (userId: string) => {
-    const user = mockUsers.find((user) => user.user_id === userId)
-    return user ? user.name : "不明なユーザー"
+    const user = users.find((user) => user.user_key === userId)
+    return user ? user.user_name : "不明なユーザー"
   }
 
   // チャンネル変更時の処理
   const handleChannelChange = (event: SelectChangeEvent<string>) => {
     const channelId = event.target.value as string
     setSelectedChannel(channelId)
+  }
+
+  // 投稿履歴を基にチャンネル参加ユーザーを取得
+  const getChannelUsers = () => {
+    const userIds = new Set(filteredHistory.map((entry) => entry.user_id))
+    return users.filter((user) => userIds.has(user.user_key))
   }
 
   // ユーザー選択時の処理
@@ -69,7 +124,7 @@ export default function DashboardPage() {
     // 選択されたユーザーの投稿履歴を集計
     filteredHistory.forEach((entry) => {
       if (selectedUsers.includes(entry.user_id)) {
-        const time = dayjs(entry.ts).format("HH:00") // 時刻のみ
+        const time = dayjs(entry.timestamp).format("HH:00") // 時刻のみ
         userActivity[time] = (userActivity[time] || 0) + 1
       }
     })
@@ -87,7 +142,7 @@ export default function DashboardPage() {
         .slice(0, 5)
     }
 
-    setSuggestedTimes(commonTimes.map(([time]) => time));
+    setSuggestedTimes(commonTimes.map(([time]) => time))
   }
 
   // アクティビティデータを生成
@@ -99,10 +154,10 @@ export default function DashboardPage() {
     filteredHistory.forEach((entry) => {
       const time =
         scale === "day"
-          ? dayjs(entry.ts).format("YYYY/MM/DD HH:00")
+          ? dayjs(entry.timestamp).format("YYYY/MM/DD HH:00")
           : scale === "week"
-            ? dayjs(entry.ts).format("YYYY/MM/DD")
-            : dayjs(entry.ts).format("YYYY/MM/DD")
+            ? dayjs(entry.timestamp).format("YYYY/MM/DD")
+            : dayjs(entry.timestamp).format("YYYY/MM/DD")
       activity[time] = (activity[time] || 0) + 1
     })
 
@@ -111,23 +166,23 @@ export default function DashboardPage() {
     if (scale === "day") {
       // 直近24時間（1時間単位）
       for (let i = 0; i < 24; i++) {
-        const hour = now.subtract(23 - i, 'hour').format("YYYY/MM/DD HH:00")
+        const hour = now.subtract(23 - i, "hour").format("YYYY/MM/DD HH:00")
         sortedActivity.push({ time: hour, count: activity[hour] || 0 })
       }
     } else if (scale === "week") {
       // 直近7日間（1日単位）
       for (let i = 0; i < 7; i++) {
-        const day = now.subtract(6 - i, 'day').format("YYYY/MM/DD")
+        const day = now.subtract(6 - i, "day").format("YYYY/MM/DD")
         sortedActivity.push({ time: day, count: activity[day] || 0 })
       }
     } else {
       // 直近30日間（5日単位）
       for (let i = 0; i < 6; i++) {
-        const start = now.subtract(25 - i * 5, 'day').format("YYYY/MM/DD")
-        const end = now.subtract(20 - i * 5, 'day').format("YYYY/MM/DD")
+        const start = now.subtract(25 - i * 5, "day").format("YYYY/MM/DD")
+        const end = now.subtract(20 - i * 5, "day").format("YYYY/MM/DD")
         const range = `${start}`
         const count = Object.keys(activity)
-          .filter((key) => dayjs(key).isBetween(start, end, null, '[]'))
+          .filter((key) => dayjs(key).isBetween(start, end, null, "[]"))
           .reduce((sum, key) => sum + activity[key], 0)
         sortedActivity.push({ time: range, count })
       }
@@ -135,12 +190,6 @@ export default function DashboardPage() {
 
     setActivityData(sortedActivity)
   }
-
-  // チャンネルに基づく投稿履歴のフィルタリング
-  useEffect(() => {
-    const history = mockHistory.filter((entry) => entry.channel_id === selectedChannel)
-    setFilteredHistory(history)
-  }, [selectedChannel])
 
   // アクティビティデータの更新
   useEffect(() => {
@@ -167,9 +216,9 @@ export default function DashboardPage() {
                 onChange={handleChannelChange}
                 input={<OutlinedInput label="チャンネル" />}
               >
-                {mockChannels.map((channel) => (
+                {channels.map((channel) => (
                   <MenuItem key={channel.channel_id} value={channel.channel_id}>
-                    {channel.name}
+                    {channel.channel_name}
                   </MenuItem>
                 ))}
               </Select>
@@ -198,9 +247,9 @@ export default function DashboardPage() {
                   </Box>
                 )}
               >
-                {mockUsers.map((user) => (
-                  <MenuItem key={user.user_id} value={user.user_id}>
-                    {user.name}
+                {getChannelUsers().map((user) => (
+                  <MenuItem key={user.user_key} value={user.user_key}>
+                    {user.user_name}
                   </MenuItem>
                 ))}
               </Select>
@@ -268,12 +317,12 @@ export default function DashboardPage() {
             <Typography variant="h6" gutterBottom>
               投稿履歴
             </Typography>
-            <List>
-              {filteredHistory.map((entry, index) => (
+            <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+              {filteredHistory.slice(0, 10).map((entry, index) => (
                 <ListItem key={index} disablePadding>
                   <ListItemText
-                    primary={`${entry.message}`}
-                    secondary={`ユーザー: ${getUserName(entry.user_id)}, 時刻: ${entry.ts}`}
+                    primary={`${entry.text}`}
+                    secondary={`ユーザー: ${getUserName(entry.user_id)}, 時刻: ${entry.timestamp}`}
                   />
                 </ListItem>
               ))}

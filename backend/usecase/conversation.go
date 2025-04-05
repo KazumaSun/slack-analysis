@@ -28,54 +28,48 @@ func NewConversationUsecase(repo *repository.Repository, slackTokenBot string) *
 
 // InitializeChannelConversations は指定したチャンネルの会話履歴の初期化を行います
 func (u *ConversationUsecase) InitializeChannelConversations(channelID string) ([]repository.SlackConversation, error) {
-	api := slack.New(u.slackTokenBot)                    // Slack APIの初期化
-	allMessages := []slack.Message{}                     // 全ての会話を格納するスライス
-	allConversations := []repository.SlackConversation{} // 全ての会話を格納するスライス
+	api := slack.New(u.slackTokenBot)
+	allMessages := []slack.Message{}
+	allConversations := []repository.SlackConversation{}
 
-	// チャンネルの会話履歴を取得するパラメータ
+	// チャンネルにボットを参加させる
+	_, _, _, err := api.JoinConversation(channelID)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing_scope") {
+			log.Printf("スコープが不足しています: %v", err)
+			return nil, fmt.Errorf("missing required scope: %w", err)
+		}
+		log.Printf("チャンネルへの参加に失敗しました: %v", err)
+		return nil, fmt.Errorf("failed to join channel: %w", err)
+	}
+
 	historyParams := slack.GetConversationHistoryParameters{
 		ChannelID: channelID,
 		Limit:     1000,
 	}
 
-	// ページネーションのためのループ
 	for {
-		// APIを呼び出して履歴を取得
 		history, err := api.GetConversationHistory(&historyParams)
 		if err != nil {
-			log.Fatalf("会話履歴の取得に失敗しました: %v", err)
+			log.Printf("会話履歴の取得に失敗しました: %v", err)
+			return nil, fmt.Errorf("failed to fetch conversation history: %w", err)
 		}
 
-		// 取得したメッセージを allMessages に追加
 		allMessages = append(allMessages, history.Messages...)
-		fmt.Printf("%d 件のメッセージを取得しました (合計: %d 件)\n", len(history.Messages), len(allMessages))
-
-		// 次のカーソルがあるか確認
 		if history.ResponseMetaData.NextCursor == "" {
-			fmt.Println("全てのメッセージを取得しました。")
-			break // ループを抜ける
+			break
 		}
 
-		// 次のページのカーソルをパラメータにセット
 		historyParams.Cursor = history.ResponseMetaData.NextCursor
-		fmt.Printf("次のカーソル: %s\n", historyParams.Cursor)
-
-		// --- レート制限への配慮 (重要！) ---
-		// Slack APIにはレート制限があります。連続で呼び出しすぎるとエラーになります。
-		// Tier 3 (conversations.history) は比較的要求数が多い (約50+/min) ですが、
-		// 念のため、ループの間に短い待機時間を設けることを推奨します。
-		time.Sleep(1200 * time.Millisecond) // 例: 1.2秒待機
+		time.Sleep(1200 * time.Millisecond)
 	}
 
-	// 取得したメッセージを表示
-	for i, message := range allMessages {
-		fmt.Printf("メッセージ %d: %s\n", i+1, message.Text)    // メッセージの内容を表示
-		ts, err := FormatSlackTimestamp(message.Timestamp) // タイムスタンプをフォーマット
+	for _, message := range allMessages {
+		ts, err := FormatSlackTimestamp(message.Timestamp)
 		if err != nil {
 			log.Printf("タイムスタンプのフォーマットに失敗しました: %v", err)
 			continue
 		}
-		// メッセージを全ての会話のスライスに追加
 		allConversations = append(allConversations, repository.SlackConversation{
 			ChannelID:   channelID,
 			UserID:      message.User,
@@ -85,18 +79,7 @@ func (u *ConversationUsecase) InitializeChannelConversations(channelID string) (
 		})
 	}
 
-	// 取得した会話履歴をDBに保存
-
-	// フロントに返す処理とDBに格納する処理は並列処理でやると良い挑戦になるかも
 	return allConversations, nil
-
-	// // 取得した会話履歴をDBに保存
-	// for _, message := range allMessages {
-	// 	if err := u.repo.SaveConversation(message); err != nil {
-	// 		return err
-	// 	}
-	// }
-	// conversationsを作成して、それをSaveして、errっていうのもありか
 }
 
 // FormatSlackTimestamp は Slack API から取得したタイムスタンプ文字列

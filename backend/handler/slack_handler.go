@@ -2,11 +2,12 @@
 package handler
 
 import (
+	"backend/usecase"
+	"fmt"
 	"log"
 	"net/http"
-	"fmt"
+
 	"github.com/gin-gonic/gin"
-	"backend/usecase"
 )
 
 type SlackHandler struct {
@@ -63,7 +64,6 @@ func (h *SlackHandler) GetAllUsersHandler(c *gin.Context) {
 		})
 		return
 	}
-
 	// users が空スライスの場合もそのまま返す (JSONでは [] となる)
 	c.JSON(http.StatusOK, gin.H{
 		"users": users,

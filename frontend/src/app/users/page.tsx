@@ -1,143 +1,162 @@
 'use client'
 
-import { Box, Typography, List, ListItem, ListItemText, Collapse, IconButton, Button, Stack } from "@mui/material"
-import { ExpandLess, ExpandMore } from "@mui/icons-material"
+import { Box, Typography, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Divider, Stack, Button } from "@mui/material"
 import { useState, useEffect } from "react"
 import { Channel, History, User } from "@/type"
 import { API_BASE_URL } from "@/constants"
 
 export default function UsersPage() {
-  const [openChannels, setOpenChannels] = useState<{ [key: string]: boolean }>({})
   const [users, setUsers] = useState<User[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
-  const [history, setHistory] = useState<{ [key: string]: History[] }>({})
+  const [selectedChannel, setSelectedChannel] = useState<string>("")
+  const [channelUsers, setChannelUsers] = useState<string[]>([])
 
-  // チャンネルの展開状態をトグル
-  const toggleChannel = (channelId: string) => {
-    setOpenChannels((prev) => ({
-      ...prev,
-      [channelId]: !prev[channelId],
-    }))
+  // ユーザー情報とチャンネル情報を取得
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // ユーザー情報を取得
+        const usersResponse = await fetch(`${API_BASE_URL}/users`)
+        if (!usersResponse.ok) throw new Error("Failed to fetch users")
+        const usersData = await usersResponse.json()
+        setUsers(usersData.users)
+
+        // チャンネル情報を取得
+        const channelsResponse = await fetch(`${API_BASE_URL}/channels`)
+        if (!channelsResponse.ok) throw new Error("Failed to fetch channels")
+        const channelsData = await channelsResponse.json()
+        const channelsArray = Array.isArray(channelsData.channels) ? channelsData.channels : []
+        setChannels(channelsArray)
+
+        // デフォルトで最初のチャンネルを選択
+        if (channelsArray.length > 0) {
+          setSelectedChannel(channelsArray[0].channel_id)
+        }
+      } catch (error) {
+        console.error("データの取得に失敗しました:", error)
+      }
+    }
+
+    fetchInitialData()
+  }, [])
+
+  // 選択されたチャンネルの履歴を取得
+  useEffect(() => {
+    if (!selectedChannel) return
+
+    const fetchChannelHistory = async () => {
+      try {
+        const historyResponse = await fetch(`${API_BASE_URL}/history/${selectedChannel}`)
+        if (!historyResponse.ok) throw new Error(`Failed to fetch history for channel ${selectedChannel}`)
+        const channelHistory = await historyResponse.json()
+
+        // チャンネルのメンバー一覧を生成
+        const usersInChannel = channelHistory.messages.map((historyItem: History) => {
+          const user = users.find((u) => u.user_key === historyItem.user_id)
+          return user ? user.user_name : "不明なユーザー"
+        }).filter((userName: string | null): userName is string => userName !== null)
+
+        setChannelUsers(Array.from(new Set(usersInChannel))) // 重複を排除
+      } catch (error) {
+        console.error("履歴の取得に失敗しました:", error)
+      }
+    }
+
+    fetchChannelHistory()
+  }, [selectedChannel, users])
+
+  // チャンネル選択時の処理
+  const handleChannelChange = (event: SelectChangeEvent<string>) => {
+    setSelectedChannel(event.target.value as string)
   }
 
-  // データを取得する
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const usersResponse = await fetch(`${API_BASE_URL}/users`);
-        const usersData = await usersResponse.json();
-        console.log("Users Data:", usersData);
-        setUsers(usersData);
-
-        const channelsResponse = await fetch(`${API_BASE_URL}/channels`);
-        const channelsData = await channelsResponse.json();
-
-        // channelsData の中に channels プロパティがある場合に対応
-        const channelsArray = Array.isArray(channelsData.channels) ? channelsData.channels : [];
-        console.log("Channels Data:", channelsArray);
-        setChannels(channelsArray);
-
-        const historyData: { [key: string]: History[] } = {};
-        for (const channel of channelsArray) {
-          const historyResponse = await fetch(`${API_BASE_URL}/history/${channel.channel_id}`);
-          const channelHistory = await historyResponse.json();
-          historyData[channel.channel_id] = channelHistory;
-        }
-        setHistory(historyData);
-      } catch (error) {
-        console.error("データの取得に失敗しました:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // チャンネルごとのユーザー一覧を生成
-  const channelUsers = channels.map((channel) => {
-    const usersInChannel = history[channel.channel_id]?.map((historyItem) => {
-      const user = users.find((u) => u.user_key === historyItem.user_id)
-      return user ? user.user_name : null
-    }).filter((userName): userName is string => userName !== null) || [] // historyが未定義の場合に空配列を使用
-    return { ...channel, users: Array.from(new Set(usersInChannel)) }
-  })
-
-  // ユーザーリスト初期化
-  const handleUserInit = async () => {
+  // ユーザー初期化
+  const initializeUsers = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/users/init`, { method: "POST" })
-      if (response.ok) {
-        alert("ユーザー情報が初期化されました")
-        window.location.reload();
-      } else {
-        console.error("ユーザー情報初期化に失敗しました:", await response.text())
-      }
+      if (!response.ok) throw new Error("Failed to initialize users")
+      alert("ユーザーの初期化が成功しました")
+      window.location.reload() // ページを再読み込み
     } catch (error) {
-      console.error("ユーザー情報初期化に失敗しました:", error)
+      console.error("ユーザーの初期化に失敗しました:", error)
+      alert("ユーザーの初期化に失敗しました")
     }
   }
 
-  // チャンネルリスト初期化
-  const handleChannelInit = async () => {
+  // チャンネル初期化
+  const initializeChannels = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/channels/init`, { method: "POST" })
-      if (response.ok) {
-        alert("チャンネル情報が初期化されました")
-        window.location.reload();
-      } else {
-        console.error("チャンネル情報初期化に失敗しました:", await response.text())
-      }
+      if (!response.ok) throw new Error("Failed to initialize channels")
+      alert("チャンネルの初期化が成功しました")
+      window.location.reload() // ページを再読み込み
     } catch (error) {
-      console.error("チャンネル情報初期化に失敗しました:", error)
+      console.error("チャンネルの初期化に失敗しました:", error)
+      alert("チャンネルの初期化に失敗しました")
     }
   }
 
   return (
     <Box p={4}>
       <Typography variant="h4" mb={2}>
-        チャンネル/ユーザー管理
+        チャンネル/ユーザー一覧
       </Typography>
 
       {/* 初期化ボタン */}
       <Stack direction="row" spacing={2} mb={4}>
-        <Button variant="contained" color="primary" onClick={handleUserInit}>
+        <Button variant="contained" color="primary" onClick={initializeUsers}>
           ユーザー初期化
         </Button>
-        <Button variant="contained" color="secondary" onClick={handleChannelInit}>
+        <Button variant="contained" color="secondary" onClick={initializeChannels}>
           チャンネル初期化
         </Button>
       </Stack>
 
+      {/* チャンネル選択セレクタ */}
+      <FormControl fullWidth margin="normal">
+        <InputLabel>チャンネルを選択</InputLabel>
+        <Select value={selectedChannel} onChange={handleChannelChange}>
+          {channels.map((channel) => (
+            <MenuItem key={channel.channel_id} value={channel.channel_id}>
+              {channel.channel_name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* 選択されたチャンネルのメンバー一覧 */}
+      <Box mt={4}>
+        <Typography variant="h6" mb={2}>
+          メンバー一覧
+        </Typography>
+        <List>
+          {channelUsers.map((userName) => (
+            <ListItem key={userName}>
+              <ListItemText primary={userName} />
+            </ListItem>
+          ))}
+          {channelUsers.length === 0 && (
+            <Typography color="text.secondary">このチャンネルにはユーザーがいません</Typography>
+          )}
+        </List>
+      </Box>
+
+      <Divider sx={{ my: 4 }} />
+
       {/* チャンネル一覧 */}
-      <Box>
+      <Box mt={4}>
         <Typography variant="h6" mb={2}>
           チャンネル一覧
         </Typography>
-        {channelUsers.map((channel) => (
-          <Box key={channel.channel_id} mb={4}>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Typography fontWeight="bold" mb={1}>
-                #{channel.channel_name}
-              </Typography>
-              <IconButton onClick={() => toggleChannel(channel.channel_id)}>
-                {openChannels[channel.channel_id] ? <ExpandLess /> : <ExpandMore />}
-              </IconButton>
-            </Box>
-            <Collapse in={openChannels[channel.channel_id]} timeout="auto" unmountOnExit>
-              <List>
-                {channel.users.map((userName) => (
-                  <ListItem key={userName}>
-                    <ListItemText primary={userName} />
-                  </ListItem>
-                ))}
-                {channel.users.length === 0 && (
-                  <Typography color="text.secondary">
-                    このチャンネルにはユーザーがいません
-                  </Typography>
-                )}
-              </List>
-            </Collapse>
-          </Box>
-        ))}
+        <List>
+          {channels.map((channel) => (
+            <ListItem key={channel.channel_id}>
+              <ListItemText
+                primary={channel.channel_name}
+              />
+            </ListItem>
+          ))}
+        </List>
       </Box>
     </Box>
   )
