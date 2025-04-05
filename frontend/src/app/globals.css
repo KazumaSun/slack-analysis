@@ -3,12 +3,14 @@
 body {
   margin: 0;
   font-family: sans-serif;
-  background: linear-gradient(to bottom right, #eef2ff, #f3e8ff);
+  background: linear-gradient(180deg, #acc6f0, #d5f2db); /* 落ち着いたグラデーション */
+  background-size: cover;
+  background-repeat: no-repeat; /* 背景を繰り返さない */
   color: #333;
 }
 
 html, body {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
 }
@@ -34,13 +36,6 @@ p {
   margin-bottom: 2rem;
 }
 
-.globe-img {
-  width: 160px;
-  height: 160px;
-  margin-bottom: 2rem;
-  animation: bounce 2s infinite;
-}
-
 button {
   background-color: #6366f1;
   color: white;
@@ -54,13 +49,4 @@ button {
 
 button:hover {
   background-color: #4f46e5;
-}
-
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-15px);
-  }
 }

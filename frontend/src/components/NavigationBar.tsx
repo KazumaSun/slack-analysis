@@ -19,7 +19,7 @@ export default function NavigationBar() {
       <Toolbar>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
           <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            Slack Activity Insight
+            SeeLACK
           </Link>
         </Typography>
         <Box>

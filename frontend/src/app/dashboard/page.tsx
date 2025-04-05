@@ -4,8 +4,6 @@ import { useEffect, useState } from "react"
 import {
   Box,
   Typography,
-  useTheme,
-  useMediaQuery,
   Paper,
   List,
   ListItem,
@@ -15,11 +13,17 @@ import {
   Select,
   MenuItem,
   OutlinedInput,
-  Chip,
   Stack,
+  Chip,
   ToggleButton,
   ToggleButtonGroup,
 } from "@mui/material"
+import dayjs from "dayjs"
+import isBetween from "dayjs/plugin/isBetween"
+
+dayjs.extend(isBetween)
+import { SelectChangeEvent } from "@mui/material/Select"
+import { mockChannels, mockHistory, mockUsers } from "@/mockData"
 import {
   LineChart,
   Line,
@@ -29,122 +33,224 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import dayjs from "dayjs"
-
-const allMockUsers = [
-  { id: 1, name: "佐藤" },
-  { id: 2, name: "鈴木" },
-  { id: 3, name: "田中" },
-  { id: 4, name: "山本" },
-  { id: 5, name: "中村" },
-]
-
-const mockAvailability: Record<string, string[]> = {
-  "佐藤": ["月-10:00", "水-14:00", "金-15:00"],
-  "鈴木": ["水-14:00", "木-10:00", "金-15:00"],
-  "田中": ["水-14:00", "金-15:00"],
-  "山本": ["月-10:00", "火-13:00"],
-  "中村": ["金-15:00", "水-14:00"],
-}
 
 type ActivityScale = "day" | "week" | "month"
 
-type User = {
-  id: number
-  name: string
-  status: string
-}
-
 export default function DashboardPage() {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-
-  const [onlineData, setOnlineData] = useState<{ time: string; count: number }[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [selectedUserNames, setSelectedUserNames] = useState<string[]>([])
-  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [selectedChannel, setSelectedChannel] = useState<string>(mockChannels[0].channel_id)
+  const [filteredHistory, setFilteredHistory] = useState<typeof mockHistory>([])
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [suggestedTimes, setSuggestedTimes] = useState<string[]>([])
+  const [activityData, setActivityData] = useState<{ time: string; count: number }[]>([])
   const [scale, setScale] = useState<ActivityScale>("day")
 
-  const generateActivityData = (scale: ActivityScale) => {
-    const now = dayjs()
-    if (scale === "day") {
-      return [...Array(24)].map((_, i) => {
-        const hour = now.subtract(23 - i, 'hour')
-        return {
-          time: hour.format("HH:00"),
-          count: Math.floor(Math.random() * 10 + 1),
-        }
-      })
-    } else if (scale === "week") {
-      return [...Array(7)].map((_, i) => {
-        const day = now.subtract(6 - i, 'day')
-        return {
-          time: day.format("M/D"),
-          count: Math.floor(Math.random() * 30 + 10),
-        }
-      })
-    } else {
-      return [...Array(6)].map((_, i) => {
-        const day = now.subtract(25 - i * 5, 'day')
-        return {
-          time: day.format("M/D"),
-          count: Math.floor(Math.random() * 100 + 50),
-        }
-      })
-    }
+  // ユーザーIDをユーザー名に変換
+  const getUserName = (userId: string) => {
+    const user = mockUsers.find((user) => user.user_id === userId)
+    return user ? user.name : "不明なユーザー"
   }
 
-  const suggestBestMTTime = () => {
-    const availabilityCount: Record<string, number> = {}
-    selectedUserNames.forEach((name) => {
-      mockAvailability[name]?.forEach((slot) => {
-        availabilityCount[slot] = (availabilityCount[slot] || 0) + 1
-      })
+  // チャンネル変更時の処理
+  const handleChannelChange = (event: SelectChangeEvent<string>) => {
+    const channelId = event.target.value as string
+    setSelectedChannel(channelId)
+  }
+
+  // ユーザー選択時の処理
+  const handleUserChange = (event: SelectChangeEvent<string[]>) => {
+    const users = event.target.value as string[]
+    setSelectedUsers(users)
+  }
+
+  // ミーティング時間候補を計算
+  const calculateMeetingTimes = () => {
+    const userActivity: Record<string, number> = {}
+
+    // 選択されたユーザーの投稿履歴を集計
+    filteredHistory.forEach((entry) => {
+      if (selectedUsers.includes(entry.user_id)) {
+        const time = dayjs(entry.ts).format("HH:00") // 時刻のみ
+        userActivity[time] = (userActivity[time] || 0) + 1
+      }
     })
 
-    const sorted = Object.entries(availabilityCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
+    // 全ユーザーがアクティブな時間を抽出
+    let commonTimes = Object.entries(userActivity)
+      .filter(([, count]) => count === selectedUsers.length)
+      .sort(([timeA], [timeB]) => (timeA > timeB ? 1 : -1))
+      .slice(0, 5) // 上位5つを取得
 
-    if (sorted.length > 0) {
-      setSuggestions(sorted.map(([slot, count]) => `${slot}（${count}人が可能）`))
-    } else {
-      setSuggestions(["共通で空いている時間が見つかりません"])
+    // 全ユーザーがアクティブな時間がない場合、最も活動している時間帯を抽出
+    if (commonTimes.length === 0) {
+      commonTimes = Object.entries(userActivity)
+        .sort(([, countA], [, countB]) => countB - countA) // 活動が多い順にソート
+        .slice(0, 5)
     }
+
+    setSuggestedTimes(commonTimes.map(([time]) => time));
   }
 
+  // アクティビティデータを生成
+  const generateActivityData = () => {
+    const now = dayjs()
+    const activity: Record<string, number> = {}
+
+    // 投稿履歴を基にアクティビティデータを集計
+    filteredHistory.forEach((entry) => {
+      const time =
+        scale === "day"
+          ? dayjs(entry.ts).format("YYYY/MM/DD HH:00")
+          : scale === "week"
+            ? dayjs(entry.ts).format("YYYY/MM/DD")
+            : dayjs(entry.ts).format("YYYY/MM/DD")
+      activity[time] = (activity[time] || 0) + 1
+    })
+
+    const sortedActivity: { time: string; count: number }[] = []
+
+    if (scale === "day") {
+      // 直近24時間（1時間単位）
+      for (let i = 0; i < 24; i++) {
+        const hour = now.subtract(23 - i, 'hour').format("YYYY/MM/DD HH:00")
+        sortedActivity.push({ time: hour, count: activity[hour] || 0 })
+      }
+    } else if (scale === "week") {
+      // 直近7日間（1日単位）
+      for (let i = 0; i < 7; i++) {
+        const day = now.subtract(6 - i, 'day').format("YYYY/MM/DD")
+        sortedActivity.push({ time: day, count: activity[day] || 0 })
+      }
+    } else {
+      // 直近30日間（5日単位）
+      for (let i = 0; i < 6; i++) {
+        const start = now.subtract(25 - i * 5, 'day').format("YYYY/MM/DD")
+        const end = now.subtract(20 - i * 5, 'day').format("YYYY/MM/DD")
+        const range = `${start}`
+        const count = Object.keys(activity)
+          .filter((key) => dayjs(key).isBetween(start, end, null, '[]'))
+          .reduce((sum, key) => sum + activity[key], 0)
+        sortedActivity.push({ time: range, count })
+      }
+    }
+
+    setActivityData(sortedActivity)
+  }
+
+  // チャンネルに基づく投稿履歴のフィルタリング
   useEffect(() => {
-    setOnlineData(generateActivityData(scale))
-    fetch("/api/online-users").then((res) => res.json()).then(setUsers)
-  }, [scale])
+    const history = mockHistory.filter((entry) => entry.channel_id === selectedChannel)
+    setFilteredHistory(history)
+  }, [selectedChannel])
+
+  // アクティビティデータの更新
+  useEffect(() => {
+    generateActivityData()
+  }, [filteredHistory, scale])
 
   return (
-    <Box p={isMobile ? 2 : 4}>
-      <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
+    <Box p={4}>
+      <Typography variant="h4" gutterBottom>
         ダッシュボード
       </Typography>
 
       <Stack spacing={3}>
-        {/* グラフ */}
+        {/* チャンネル選択 */}
         <Box>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              アクティビティ推移
+              チャンネルを選択
+            </Typography>
+            <FormControl fullWidth size="small">
+              <InputLabel>チャンネル</InputLabel>
+              <Select
+                value={selectedChannel}
+                onChange={handleChannelChange}
+                input={<OutlinedInput label="チャンネル" />}
+              >
+                {mockChannels.map((channel) => (
+                  <MenuItem key={channel.channel_id} value={channel.channel_id}>
+                    {channel.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Paper>
+        </Box>
+
+        {/* ユーザー選択 */}
+        <Box>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              ユーザーを選択
+            </Typography>
+            <FormControl fullWidth size="small">
+              <InputLabel>ユーザー</InputLabel>
+              <Select
+                multiple
+                value={selectedUsers}
+                onChange={handleUserChange}
+                input={<OutlinedInput label="ユーザー" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={getUserName(value)} />
+                    ))}
+                  </Box>
+                )}
+              >
+                {mockUsers.map((user) => (
+                  <MenuItem key={user.user_id} value={user.user_id}>
+                    {user.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Box mt={2}>
+              <Typography variant="h6" gutterBottom>
+                ミーティング時間候補
+              </Typography>
+              <List>
+                {suggestedTimes.map((time, index) => (
+                  <ListItem key={index}>
+                    <ListItemText primary={time} />
+                  </ListItem>
+                ))}
+                {suggestedTimes.length === 0 && (
+                  <Typography color="text.secondary">候補がありません</Typography>
+                )}
+              </List>
+              <Box mt={2}>
+                <Chip
+                  label="時間候補を計算"
+                  color="primary"
+                  clickable
+                  onClick={calculateMeetingTimes}
+                />
+              </Box>
+            </Box>
+          </Paper>
+        </Box>
+
+        {/* アクティビティグラフ */}
+        <Box>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              アクティビティグラフ
             </Typography>
             <ToggleButtonGroup
               value={scale}
               exclusive
-              onChange={(_, val) => val && setScale(val)}
+              onChange={(_, value) => value && setScale(value)}
               size="small"
               sx={{ mb: 2 }}
             >
               <ToggleButton value="day">直近24時間</ToggleButton>
-              <ToggleButton value="week">直近7日</ToggleButton>
-              <ToggleButton value="month">直近30日</ToggleButton>
+              <ToggleButton value="week">直近7日間</ToggleButton>
+              <ToggleButton value="month">直近30日間</ToggleButton>
             </ToggleButtonGroup>
-            <Box sx={{ width: '100%', height: isMobile ? 300 : 400 }}>
+            <Box sx={{ width: '100%', height: 400 }}>
               <ResponsiveContainer>
-                <LineChart data={onlineData}>
+                <LineChart data={activityData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="time" />
                   <YAxis />
@@ -156,82 +262,25 @@ export default function DashboardPage() {
           </Paper>
         </Box>
 
-        {/* オンラインユーザー & MT時間提案 */}
-        <Stack direction={isMobile ? 'column' : 'row'} spacing={3}>
-          <Box flex={1}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                現在オンラインのユーザー
-              </Typography>
-              <List>
-                {users.map((user) => (
-                  <ListItem key={user.id} disablePadding>
-                    <ListItemText primary={user.name} secondary={user.status} />
-                  </ListItem>
-                ))}
-                {users.length === 0 && (
-                  <Typography color="text.secondary">ユーザーが見つかりません</Typography>
-                )}
-              </List>
-            </Paper>
-          </Box>
-
-          <Box flex={1}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                MT時間を提案
-              </Typography>
-              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                <InputLabel>ユーザーを選択</InputLabel>
-                <Select
-                  multiple
-                  value={selectedUserNames}
-                  onChange={(e) => setSelectedUserNames(e.target.value as string[])}
-                  input={<OutlinedInput label="ユーザーを選択" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value) => (
-                        <Chip key={value} label={value} />
-                      ))}
-                    </Box>
-                  )}
-                >
-                  {allMockUsers.map((user) => (
-                    <MenuItem key={user.name} value={user.name}>{user.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Box>
-                <Typography variant="body1" gutterBottom>
-                  最も多くのメンバーが参加できそうな時間候補:
-                </Typography>
-                {suggestions.map((s, idx) => (
-                  <Typography key={idx} variant="h6" color="primary">
-                    {s}
-                  </Typography>
-                ))}
-              </Box>
-              <Box mt={2}>
-                <Chip
-                  label="提案を更新"
-                  color="primary"
-                  clickable
-                  onClick={suggestBestMTTime}
-                />
-              </Box>
-            </Paper>
-          </Box>
-        </Stack>
-
-        {/* その他カード */}
+        {/* 投稿履歴 */}
         <Box>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              アクティビティ減少アラート（準備中）
+              投稿履歴
             </Typography>
-            <Typography color="text.secondary">
-              投稿数の減少や離脱傾向を検知します。
-            </Typography>
+            <List>
+              {filteredHistory.map((entry, index) => (
+                <ListItem key={index} disablePadding>
+                  <ListItemText
+                    primary={`${entry.message}`}
+                    secondary={`ユーザー: ${getUserName(entry.user_id)}, 時刻: ${entry.ts}`}
+                  />
+                </ListItem>
+              ))}
+              {filteredHistory.length === 0 && (
+                <Typography color="text.secondary">投稿履歴がありません</Typography>
+              )}
+            </List>
           </Paper>
         </Box>
       </Stack>

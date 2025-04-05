@@ -1,188 +1,139 @@
 'use client'
 
-import { useEffect, useState } from "react"
-import {
-  TextField,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  Button,
-  Box,
-  OutlinedInput,
-  Chip,
-  Typography,
-} from "@mui/material"
-
-type User = {
-  id: number
-  name: string
-  grade: number
-  channels: string[]
-}
-
-type Channel = {
-  name: string
-  users: string[]
-}
+import { Box, Typography, List, ListItem, ListItemText, Collapse, IconButton, Button, Stack } from "@mui/material"
+import { ExpandLess, ExpandMore } from "@mui/icons-material"
+import { useState, useEffect } from "react"
+import { Channel, History, User } from "@/type"
+import { API_BASE_URL } from "@/constants"
 
 export default function UsersPage() {
+  const [openChannels, setOpenChannels] = useState<{ [key: string]: boolean }>({})
   const [users, setUsers] = useState<User[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
-  const [editId, setEditId] = useState<number | null>(null)
-  const [editedUser, setEditedUser] = useState<Partial<User>>({})
+  const [history, setHistory] = useState<{ [key: string]: History[] }>({})
 
-  const fetchAll = async () => {
-    const [u, c] = await Promise.all([
-      fetch("/api/users").then(res => res.json()),
-      fetch("/api/channels").then(res => res.json()),
-    ])
-    setUsers(u)
-    setChannels(c)
+  // チャンネルの展開状態をトグル
+  const toggleChannel = (channelId: string) => {
+    setOpenChannels((prev) => ({
+      ...prev,
+      [channelId]: !prev[channelId],
+    }))
   }
 
-  const resetData = async () => {
-    await fetch("/api/init", { method: "POST" })
-    fetchAll()
-  }
-
-  const deleteUser = async (id: number) => {
-    await fetch(`/api/users?id=${id}`, { method: "DELETE" })
-    fetchAll()
-  }
-
-  const saveUser = async (id: number) => {
-    await fetch(`/api/users?id=${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editedUser),
-    })
-    setEditId(null)
-    setEditedUser({})
-    fetchAll()
-  }
-
-  const updateChannelUsers = async (name: string, userList: string[]) => {
-    await fetch("/api/channels", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, users: userList }),
-    })
-    fetchAll()
-  }
-
+  // データを取得する
   useEffect(() => {
-    fetchAll()
+    const fetchData = async () => {
+      try {
+        // ユーザーリストを取得
+        const usersResponse = await fetch(`${API_BASE_URL}/users`)
+        const usersData = await usersResponse.json()
+        setUsers(usersData)
+
+        // チャンネルリストを取得
+        const channelsResponse = await fetch(`${API_BASE_URL}/channels`)
+        const channelsData = await channelsResponse.json()
+        setChannels(channelsData)
+
+        // 各チャンネルの投稿履歴を取得
+        const historyData: { [key: string]: History[] } = {}
+        for (const channel of channelsData) {
+          const historyResponse = await fetch(`${API_BASE_URL}/history/${channel.channel_id}`)
+          const channelHistory = await historyResponse.json()
+          historyData[channel.channel_id] = channelHistory
+        }
+        setHistory(historyData)
+      } catch (error) {
+        console.error("データの取得に失敗しました:", error)
+      }
+    }
+
+    fetchData()
   }, [])
+
+  // チャンネルごとのユーザー一覧を生成
+  const channelUsers = channels.map((channel) => {
+    const usersInChannel = history[channel.channel_id]?.map((historyItem) => {
+      const user = users.find((u) => u.user_id === historyItem.user_id)
+      return user ? user.name : null
+    }).filter((userName): userName is string => userName !== null)
+    return { ...channel, users: Array.from(new Set(usersInChannel)) }
+  })
+
+  // ユーザーリスト初期化
+  const handleUserInit = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/init`, { method: "POST" })
+      if (response.ok) {
+        alert("ユーザー情報が初期化されました")
+        window.location.reload();
+      } else {
+        console.error("ユーザー情報初期化に失敗しました:", await response.text())
+      }
+    } catch (error) {
+      console.error("ユーザー情報初期化に失敗しました:", error)
+    }
+  }
+
+  // チャンネルリスト初期化
+  const handleChannelInit = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/channels/init`, { method: "POST" })
+      if (response.ok) {
+        alert("チャンネル情報が初期化されました")
+        window.location.reload();
+      } else {
+        console.error("チャンネル情報初期化に失敗しました:", await response.text())
+      }
+    } catch (error) {
+      console.error("チャンネル情報初期化に失敗しました:", error)
+    }
+  }
 
   return (
     <Box p={4}>
-      <Typography variant="h4" mb={2}>ユーザー / チャンネル管理</Typography>
+      <Typography variant="h4" mb={2}>
+        チャンネル/ユーザー管理
+      </Typography>
 
-      <Button variant="outlined" onClick={resetData} sx={{ mb: 4 }}>
-        データ初期化
-      </Button>
+      {/* 初期化ボタン */}
+      <Stack direction="row" spacing={2} mb={4}>
+        <Button variant="contained" color="primary" onClick={handleUserInit}>
+          ユーザー初期化
+        </Button>
+        <Button variant="contained" color="secondary" onClick={handleChannelInit}>
+          チャンネル初期化
+        </Button>
+      </Stack>
 
-      <Box mb={6}>
-        <Typography variant="h6" mb={2}>ユーザー一覧</Typography>
-        {users.map(user => (
-          <Box key={user.id} mb={2}>
-            {editId === user.id ? (
-              <Box display="flex" alignItems="center" gap={2}>
-                <TextField
-                  label="名前"
-                  defaultValue={user.name}
-                  onChange={(e) => setEditedUser({ ...editedUser, name: e.target.value })}
-                  size="small"
-                />
-
-                <FormControl size="small" sx={{ minWidth: 100 }}>
-                  <InputLabel>学年</InputLabel>
-                  <Select
-                    defaultValue={user.grade}
-                    label="学年"
-                    onChange={(e) =>
-                      setEditedUser({ ...editedUser, grade: Number(e.target.value) })
-                    }
-                  >
-                    {[1, 2, 3, 4].map((year) => (
-                      <MenuItem key={year} value={year}>{year}年</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel>チャンネル</InputLabel>
-                  <Select
-                    multiple
-                    defaultValue={user.channels}
-                    onChange={(e) =>
-                      setEditedUser({
-                        ...editedUser,
-                        channels: e.target.value as string[],
-                      })
-                    }
-                    input={<OutlinedInput label="チャンネル" />}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {(selected as string[]).map((value) => (
-                          <Chip key={value} label={value} />
-                        ))}
-                      </Box>
-                    )}
-                  >
-                    {channels.map((c) => (
-                      <MenuItem key={c.name} value={c.name}>{c.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <Button variant="contained" onClick={() => saveUser(user.id)}>保存</Button>
-              </Box>
-            ) : (
-              <Box display="flex" alignItems="center" gap={2}>
-                <Typography>{user.name}（{user.grade}年） - [{user.channels.join(", ")}]</Typography>
-                <Button size="small" onClick={() => deleteUser(user.id)}>削除</Button>
-                <Button size="small" onClick={() => {
-                  setEditId(user.id)
-                  setEditedUser(user)
-                }}>編集</Button>
-              </Box>
-            )}
-          </Box>
-        ))}
-      </Box>
-
+      {/* チャンネル一覧 */}
       <Box>
-        <Typography variant="h6" mb={2}>チャンネル一覧</Typography>
-        {channels.map((channel) => (
-          <Box key={channel.name} mb={2}>
-            <Typography fontWeight="bold">#{channel.name}</Typography>
-            <FormControl size="small" sx={{ minWidth: 300, mt: 1 }}>
-              <InputLabel>参加ユーザー</InputLabel>
-              <Select
-                multiple
-                defaultValue={channel.users}
-                onChange={(e) =>
-                  updateChannelUsers(
-                    channel.name,
-                    e.target.value as string[]
-                  )
-                }
-                input={<OutlinedInput label="参加ユーザー" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {(selected as string[]).map((value) => (
-                      <Chip key={value} label={value} />
-                    ))}
-                  </Box>
-                )}
-              >
-                {users.map((u) => (
-                  <MenuItem key={u.name} value={u.name}>{u.name}</MenuItem>
+        <Typography variant="h6" mb={2}>
+          チャンネル一覧
+        </Typography>
+        {channelUsers.map((channel) => (
+          <Box key={channel.channel_id} mb={4}>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Typography fontWeight="bold" mb={1}>
+                #{channel.name}
+              </Typography>
+              <IconButton onClick={() => toggleChannel(channel.channel_id)}>
+                {openChannels[channel.channel_id] ? <ExpandLess /> : <ExpandMore />}
+              </IconButton>
+            </Box>
+            <Collapse in={openChannels[channel.channel_id]} timeout="auto" unmountOnExit>
+              <List>
+                {channel.users.map((userName) => (
+                  <ListItem key={userName}>
+                    <ListItemText primary={userName} />
+                  </ListItem>
                 ))}
-              </Select>
-            </FormControl>
+                {channel.users.length === 0 && (
+                  <Typography color="text.secondary">
+                    このチャンネルにはユーザーがいません
+                  </Typography>
+                )}
+              </List>
+            </Collapse>
           </Box>
         ))}
       </Box>

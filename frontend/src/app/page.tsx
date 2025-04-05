@@ -17,59 +17,72 @@ export default function Home() {
   // 画面サイズの判定（レスポンシブ対応）
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-  // AppBar 高さを動的に取得
-  const appBarHeight = isMobile
-    ? (theme.mixins.toolbar?.['@media (min-width:0px)'] as { minHeight?: number })?.minHeight ?? 56
-    : (theme.mixins.toolbar?.['@media (min-width:600px)'] as { minHeight?: number })?.minHeight ?? 64
-
   return (
-    <Box
-      component="main"
-      sx={{
-        height: `calc(100vh - ${appBarHeight}px)`,
-        overflow: 'hidden',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        px: 2,
-        background: 'linear-gradient(to bottom right, #eef2ff, #f3e8ff)',
+    <div
+      style={{
+        height: '100vh', // ビューポート全体の高さ
+        overflow: 'hidden', // スクロールを無効化
       }}
     >
-      <Stack
-        spacing={4}
-        alignItems="center"
-        textAlign="center"
-        maxWidth="md"
+      <Box
+        component="main"
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          px: 2,
+          pt: 8,
+        }}
       >
-        <Typography
-          variant={isMobile ? "h4" : "h3"}
-          fontWeight="bold"
+        <Stack
+          spacing={4}
+          alignItems="center"
+          textAlign="center"
+          maxWidth="md"
+          sx={{
+            maxHeight: '100vh', // スタック全体の高さを制限
+          }}
         >
-          Slack Activity Insight
-        </Typography>
-
-        <Typography variant={isMobile ? "body1" : "h6"} color="text.secondary">
-          チームの空気を、グラフにしよう。
-        </Typography>
-
-        <Box>
-          <Image
-            src="/globe.svg"
-            alt="Gopher mascot"
-            width={isMobile ? 120 : 160}
-            height={isMobile ? 120 : 160}
-          />
-        </Box>
-
-        <Link href="/dashboard" passHref>
-          <Button
-            variant="contained"
-            size={isMobile ? "medium" : "large"}
+          <Typography
+            variant={isMobile ? "h4" : "h3"}
+            fontWeight="bold"
           >
-            ▶ 使ってみる
-          </Button>
-        </Link>
-      </Stack>
-    </Box>
+            SeeLACK
+          </Typography>
+
+          <Typography variant={isMobile ? "body1" : "h6"} color="text.secondary">
+            チームの空気を、グラフにしよう。
+          </Typography>
+
+          <Box
+            sx={{
+              animation: 'float 3s ease-in-out infinite',
+              '@keyframes float': {
+                '0%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-10px)' },
+                '100%': { transform: 'translateY(0px)' },
+              },
+            }}
+          >
+            <Image
+              src="/globe.svg"
+              alt="Gopher mascot"
+              width={isMobile ? 100 : 140}
+              height={isMobile ? 100 : 140}
+            />
+          </Box>
+
+          <Link href="/dashboard" passHref>
+            <Button
+              variant="contained"
+              size={isMobile ? "medium" : "large"}
+            >
+              ▶ 使ってみる
+            </Button>
+          </Link>
+        </Stack>
+      </Box>
+    </div>
   )
 }
