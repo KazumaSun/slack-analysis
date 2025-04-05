@@ -48,8 +48,4 @@ type SlackConversation struct {
 		Text      string `json:"text"`
 		Timestamp string `json:"ts"`
 	} `json:"messages"`
-	HasMore          bool `json:"has_more"`
-	ResponseMetadata struct {
-		NextCursor string `json:"next_cursor"`
-	} `json:"response_metadata"`
 }
