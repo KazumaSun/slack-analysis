@@ -41,34 +41,36 @@ func main() {
 	dbName := os.Getenv("DB_NAME")
 
 	// データベース接続文字列の構築
-	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", 
-									dbUser, dbPassword, dbHost, dbName)
+	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable",
+		dbUser, dbPassword, dbHost, dbName)
 
+	slackTokenBot := os.Getenv("SLACK_API_TOKEN_BOT")
 	slackTokenUser := os.Getenv("SLACK_API_TOKEN_USER")
 	if slackTokenUser == "" {
 		log.Fatal("SLACK_API_TOKEN_USER environment variable is required")
 	}
 
-	slackTokenBot := os.Getenv("SLACK_API_TOKEN_BOT")
-	if slackTokenBot == "" {
-		log.Fatal("SLACK_API_TOKEN_BOT environment variable is required")
+	if slackTokenBot == "" || slackTokenUser == "" {
+		log.Fatal("SLACK_API_TOKEN environment variable is required")
 	}
-	
+
 	// データベース接続
 	db, err := sql.Open("postgres", dbConnectionString)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
-	
+
 	// 依存関係の初期化
 	repo := repository.NewRepository(db)
 	slackUsecase := usecase.NewSlackUsecase(repo, slackTokenUser, slackTokenBot)
 	slackHandler := handler.NewSlackHandler(slackUsecase)
-	
+	conversationUsecase := usecase.NewConversationUsecase(repo, slackTokenBot)
+	conversationHandler := handler.NewConversationHandler(conversationUsecase)
+
 	// Ginルーターの設定
 	router := gin.Default()
-	
+
 	// CORS設定
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
@@ -77,19 +79,18 @@ func main() {
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
-	
+
 	// ルート定義
-	router.GET("/users", slackHandler.GetAllUsersHandler)           // GET /users
-	router.POST("/users/init", slackHandler.InitializeUsersHandler) // POST /users/init
-	router.GET("/channels", slackHandler.GetAllChannelsHandler)     // GET /channels
-	router.POST("/channels/init", slackHandler.InitializeChannelsHandler) // POST /channels/init
-	
+	router.POST("/api/initialize-users", slackHandler.InitializeUsersHandler)
+	router.GET("/api/users", slackHandler.GetAllUsersHandler)
+	router.GET("/api/initialize-channel-conversations/:channel_id", conversationHandler.InitializeChannelConversationsHandler)
+
 	// サーバー起動
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	
+
 	log.Printf("Server started on port %s", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
