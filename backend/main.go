@@ -46,6 +46,9 @@ func main() {
 
 	slackTokenBot := os.Getenv("SLACK_API_TOKEN_BOT")
 	slackTokenUser := os.Getenv("SLACK_API_TOKEN_USER")
+	if slackTokenUser == "" {
+		log.Fatal("SLACK_API_TOKEN_USER environment variable is required")
+	}
 
 	if slackTokenBot == "" || slackTokenUser == "" {
 		log.Fatal("SLACK_API_TOKEN environment variable is required")
@@ -60,7 +63,7 @@ func main() {
 
 	// 依存関係の初期化
 	repo := repository.NewRepository(db)
-	slackUsecase := usecase.NewSlackUsecase(repo, slackTokenBot)
+	slackUsecase := usecase.NewSlackUsecase(repo, slackTokenUser, slackTokenBot)
 	slackHandler := handler.NewSlackHandler(slackUsecase)
 	conversationUsecase := usecase.NewConversationUsecase(repo, slackTokenBot)
 	conversationHandler := handler.NewConversationHandler(conversationUsecase)
