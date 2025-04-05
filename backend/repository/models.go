@@ -43,7 +43,11 @@ type SlackChannel struct {
 }
 
 type SlackConversation struct {
-	User      string `json:"user"`
-	Text      string `json:"text"`
-	Timestamp string `json:"ts"`
+	// Type      string    `json:"type"`
+	ChannelID   string `json:"channel_id"`
+	UserID      string `json:"user_id"`
+	WorkspaceID string `json:"workspace_id"`
+	Text        string `json:"text"`
+	Timestamp   string `json:"timestamp"`
+	// Timestamp   time.Time `json:"ts"`
 }
