@@ -19,9 +19,9 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
-	"fmt"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -79,7 +79,7 @@ func main() {
 	}))
 	
 	// ルート定義
-	router.POST("/api/initialize-users", slackHandler.InitializeUsersHandler)
+	router.POST("/api/users/init", slackHandler.InitializeUsersHandler)
 	router.GET("/api/users", slackHandler.GetAllUsersHandler)
 	
 	// サーバー起動

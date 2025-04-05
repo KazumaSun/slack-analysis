@@ -25,7 +25,7 @@ export default function UsersPage() {
     const fetchData = async () => {
       try {
         // ユーザーリストを取得
-        const usersResponse = await fetch(`${API_BASE_URL}/users`)
+        const usersResponse = await fetch(`${API_BASE_URL}/api/users`)
         const usersData = await usersResponse.json()
         setUsers(usersData)
 
@@ -53,8 +53,8 @@ export default function UsersPage() {
   // チャンネルごとのユーザー一覧を生成
   const channelUsers = channels.map((channel) => {
     const usersInChannel = history[channel.channel_id]?.map((historyItem) => {
-      const user = users.find((u) => u.user_id === historyItem.user_id)
-      return user ? user.name : null
+      const user = users.find((u) => u.user_key === historyItem.user_id)
+      return user ? user.user_name : null
     }).filter((userName): userName is string => userName !== null)
     return { ...channel, users: Array.from(new Set(usersInChannel)) }
   })
@@ -62,7 +62,7 @@ export default function UsersPage() {
   // ユーザーリスト初期化
   const handleUserInit = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/init`, { method: "POST" })
+      const response = await fetch(`${API_BASE_URL}/api/users/init`, { method: "POST" })
       if (response.ok) {
         alert("ユーザー情報が初期化されました")
         window.location.reload();
@@ -77,7 +77,7 @@ export default function UsersPage() {
   // チャンネルリスト初期化
   const handleChannelInit = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/channels/init`, { method: "POST" })
+      const response = await fetch(`${API_BASE_URL}/api/channels/init`, { method: "POST" })
       if (response.ok) {
         alert("チャンネル情報が初期化されました")
         window.location.reload();

@@ -1,13 +1,15 @@
 // ユーザーの型
 export interface User {
-  user_id: string; // ユーザID
-  name: string; // ユーザ名（profileのdisplay_name）
+  user_key: string; // SlackのユーザーID
+  user_name: string; // ユーザー名（表示名または実名）
+  grade: number; // ユーザーのグレード
+  team_key: number; // チームキー
 }
 
 // チャンネルの型
 export interface Channel {
-  channel_id: string; // チャンネルID
-  name: string; // チャンネル名
+  channel_id: string; // SlackのチャンネルID
+  channel_name: string; // チャンネル名
 }
 
 // 投稿履歴の型
