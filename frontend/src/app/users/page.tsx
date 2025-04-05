@@ -24,38 +24,40 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // ユーザーリストを取得
-        const usersResponse = await fetch(`${API_BASE_URL}/api/users`)
-        const usersData = await usersResponse.json()
-        setUsers(usersData)
+        const usersResponse = await fetch(`${API_BASE_URL}/users`);
+        const usersData = await usersResponse.json();
+        console.log("Users Data:", usersData);
+        setUsers(usersData);
 
-        // チャンネルリストを取得
-        const channelsResponse = await fetch(`${API_BASE_URL}/channels`)
-        const channelsData = await channelsResponse.json()
-        setChannels(channelsData)
+        const channelsResponse = await fetch(`${API_BASE_URL}/channels`);
+        const channelsData = await channelsResponse.json();
 
-        // 各チャンネルの投稿履歴を取得
-        const historyData: { [key: string]: History[] } = {}
-        for (const channel of channelsData) {
-          const historyResponse = await fetch(`${API_BASE_URL}/history/${channel.channel_id}`)
-          const channelHistory = await historyResponse.json()
-          historyData[channel.channel_id] = channelHistory
+        // channelsData の中に channels プロパティがある場合に対応
+        const channelsArray = Array.isArray(channelsData.channels) ? channelsData.channels : [];
+        console.log("Channels Data:", channelsArray);
+        setChannels(channelsArray);
+
+        const historyData: { [key: string]: History[] } = {};
+        for (const channel of channelsArray) {
+          const historyResponse = await fetch(`${API_BASE_URL}/history/${channel.channel_id}`);
+          const channelHistory = await historyResponse.json();
+          historyData[channel.channel_id] = channelHistory;
         }
-        setHistory(historyData)
+        setHistory(historyData);
       } catch (error) {
-        console.error("データの取得に失敗しました:", error)
+        console.error("データの取得に失敗しました:", error);
       }
-    }
+    };
 
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   // チャンネルごとのユーザー一覧を生成
   const channelUsers = channels.map((channel) => {
     const usersInChannel = history[channel.channel_id]?.map((historyItem) => {
       const user = users.find((u) => u.user_key === historyItem.user_id)
       return user ? user.user_name : null
-    }).filter((userName): userName is string => userName !== null)
+    }).filter((userName): userName is string => userName !== null) || [] // historyが未定義の場合に空配列を使用
     return { ...channel, users: Array.from(new Set(usersInChannel)) }
   })
 
@@ -114,7 +116,7 @@ export default function UsersPage() {
           <Box key={channel.channel_id} mb={4}>
             <Box display="flex" alignItems="center" justifyContent="space-between">
               <Typography fontWeight="bold" mb={1}>
-                #{channel.name}
+                #{channel.channel_name}
               </Typography>
               <IconButton onClick={() => toggleChannel(channel.channel_id)}>
                 {openChannels[channel.channel_id] ? <ExpandLess /> : <ExpandMore />}
