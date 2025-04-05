@@ -81,9 +81,11 @@ func main() {
 	}))
 
 	// ルート定義
-	router.POST("/api/initialize-users", slackHandler.InitializeUsersHandler)
-	router.GET("/api/users", slackHandler.GetAllUsersHandler)
-	router.GET("/api/initialize-channel-conversations/:channel_id", conversationHandler.InitializeChannelConversationsHandler)
+	router.GET("/users", slackHandler.GetAllUsersHandler)           // GET /users
+	router.POST("/users/init", slackHandler.InitializeUsersHandler) // POST /users/init
+	router.GET("/channels", slackHandler.GetAllChannelsHandler)     // GET /channels
+	router.POST("/channels/init", slackHandler.InitializeChannelsHandler) // POST /channels/init
+	router.GET("/history/:channel_id", conversationHandler.InitializeChannelConversationsHandler)
 
 	// サーバー起動
 	port := os.Getenv("PORT")
