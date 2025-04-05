@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation'
 const navItems = [
   { label: 'トップ', href: '/' },
   { label: 'ダッシュボード', href: '/dashboard' },
-  { label: 'ユーザー管理', href: '/users' },
+  { label: 'チャンネル/ユーザー一覧', href: '/users' },
 ]
 
 export default function NavigationBar() {

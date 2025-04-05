@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Typography, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Divider } from "@mui/material"
+import { Box, Typography, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Divider, Stack, Button } from "@mui/material"
 import { useState, useEffect } from "react"
 import { Channel, History, User } from "@/type"
 import { API_BASE_URL } from "@/constants"
@@ -70,11 +70,47 @@ export default function UsersPage() {
     setSelectedChannel(event.target.value as string)
   }
 
+  // ユーザー初期化
+  const initializeUsers = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/init`, { method: "POST" })
+      if (!response.ok) throw new Error("Failed to initialize users")
+      alert("ユーザーの初期化が成功しました")
+      window.location.reload() // ページを再読み込み
+    } catch (error) {
+      console.error("ユーザーの初期化に失敗しました:", error)
+      alert("ユーザーの初期化に失敗しました")
+    }
+  }
+
+  // チャンネル初期化
+  const initializeChannels = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/channels/init`, { method: "POST" })
+      if (!response.ok) throw new Error("Failed to initialize channels")
+      alert("チャンネルの初期化が成功しました")
+      window.location.reload() // ページを再読み込み
+    } catch (error) {
+      console.error("チャンネルの初期化に失敗しました:", error)
+      alert("チャンネルの初期化に失敗しました")
+    }
+  }
+
   return (
     <Box p={4}>
       <Typography variant="h4" mb={2}>
-        チャンネル/ユーザー管理
+        チャンネル/ユーザー一覧
       </Typography>
+
+      {/* 初期化ボタン */}
+      <Stack direction="row" spacing={2} mb={4}>
+        <Button variant="contained" color="primary" onClick={initializeUsers}>
+          ユーザー初期化
+        </Button>
+        <Button variant="contained" color="secondary" onClick={initializeChannels}>
+          チャンネル初期化
+        </Button>
+      </Stack>
 
       {/* チャンネル選択セレクタ */}
       <FormControl fullWidth margin="normal">
