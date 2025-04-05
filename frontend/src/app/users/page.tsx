@@ -62,7 +62,7 @@ export default function UsersPage() {
   // ユーザーリスト初期化
   const handleUserInit = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/init`, { method: "POST" })
+      const response = await fetch(`${API_BASE_URL}/users/init`, { method: "POST" })
       if (response.ok) {
         alert("ユーザー情報が初期化されました")
         window.location.reload();
@@ -77,7 +77,7 @@ export default function UsersPage() {
   // チャンネルリスト初期化
   const handleChannelInit = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/channels/init`, { method: "POST" })
+      const response = await fetch(`${API_BASE_URL}/channels/init`, { method: "POST" })
       if (response.ok) {
         alert("チャンネル情報が初期化されました")
         window.location.reload();
