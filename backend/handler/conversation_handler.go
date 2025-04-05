@@ -30,6 +30,8 @@ func (h *ConversationHandler) InitializeChannelConversationsHandler(c *gin.Conte
 		})
 		return
 	}
+	// 動作確認用
+	log.Printf("channelID: %s", channelID)
 
 	// チャンネルの会話履歴を初期化
 	err := h.conversationUsecase.InitializeChannelConversations(channelID)

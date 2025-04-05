@@ -64,6 +64,11 @@ func (u *ConversationUsecase) InitializeChannelConversations(channelID string) e
 		// 念のため、ループの間に短い待機時間を設けることを推奨します。
 		time.Sleep(1200 * time.Millisecond) // 例: 1.2秒待機
 	}
+
+	// 動作確認用
+	for i, message := range allMessages {
+		fmt.Printf("メッセージ %d: %s\n", i+1, message.Text)
+	}
 	// // 取得した会話履歴をDBに保存
 	// for _, message := range allMessages {
 	// 	if err := u.repo.SaveConversation(message); err != nil {
