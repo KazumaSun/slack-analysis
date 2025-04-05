@@ -27,10 +27,8 @@ func NewConversationUsecase(repo *repository.Repository, slackTokenBot string) *
 }
 
 // InitializeChannelConversations は指定したチャンネルの会話履歴の初期化を行います
-// func (u *ConversationUsecase) InitializeChannelConversations(channelID string) ([]slack.Message, error) {
 func (u *ConversationUsecase) InitializeChannelConversations(channelID string) ([]repository.SlackConversation, error) {
-	api := slack.New(u.slackTokenBot) // Slack APIの初期化
-	// allConversations := []repository.SlackConversation{}	// 全ての会話を格納するスライス
+	api := slack.New(u.slackTokenBot)                    // Slack APIの初期化
 	allMessages := []slack.Message{}                     // 全ての会話を格納するスライス
 	allConversations := []repository.SlackConversation{} // 全ての会話を格納するスライス
 
@@ -90,7 +88,6 @@ func (u *ConversationUsecase) InitializeChannelConversations(channelID string) (
 	// 取得した会話履歴をDBに保存
 
 	// フロントに返す処理とDBに格納する処理は並列処理でやると良い挑戦になるかも
-	// return allMessages, nil
 	return allConversations, nil
 
 	// // 取得した会話履歴をDBに保存
@@ -142,17 +139,3 @@ func FormatSlackTimestamp(slackTs string) (string, error) {
 	// return unixTimeSeconds, nil
 	return formattedTime, nil
 }
-
-// // FormatUnixTimestamp はUnixタイムスタンプ(秒)を受け取り、
-// // "YYYY/MM/DD hh:mm:ss" 形式の文字列に変換して返します。
-// func FormatUnixTimestamp(unixTime int64) string {
-// 	// int64のUnixタイムスタンプ(秒)を time.Time 型に変換
-// 	// 第2引数はナノ秒部分。秒単位のタイムスタンプなら0でOK
-// 	t := time.Unix(unixTime, 0)
-
-// 	// time.Time 型の値を指定したレイアウト文字列でフォーマット
-// 	// "YYYY/MM/DD hh:mm:ss" (24時間表記) に対応するGoのレイアウトは "2006/01/02 15:04:05"
-// 	formattedTime := t.Format("2006/01/02 15:04:05")
-
-// 	return formattedTime
-// }

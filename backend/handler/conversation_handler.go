@@ -33,7 +33,7 @@ func (h *ConversationHandler) InitializeChannelConversationsHandler(c *gin.Conte
 	// 動作確認用
 	log.Printf("channelID: %s", channelID)
 
-	// チャンネルの会話履歴を取得してDBに保存
+	// チャンネルの会話履歴を取得
 	allMessages, err := h.conversationUsecase.InitializeChannelConversations(channelID)
 	if err != nil {
 		log.Printf("Failed to initialize channel conversations: %v", err)
@@ -42,14 +42,6 @@ func (h *ConversationHandler) InitializeChannelConversationsHandler(c *gin.Conte
 		})
 		return
 	}
-	// err := h.conversationUsecase.InitializeChannelConversations(channelID)
-	// if err != nil {
-	// 	log.Printf("Failed to initialize users: %v", err)
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"error": err.Error(),
-	// 	})
-	// 	return
-	// }
 
 	// 成功した場合のレスポンス
 	c.JSON(http.StatusOK, gin.H{
@@ -59,19 +51,3 @@ func (h *ConversationHandler) InitializeChannelConversationsHandler(c *gin.Conte
 		"messages":   allMessages,
 	})
 }
-
-// // GetAllUsersHandler はユーザー情報取得APIのハンドラー
-// func (h *SlackHandler) GetAllUsersHandler(c *gin.Context) {
-// 	users, err := h.slackUsecase.GetAllUsers()
-// 	if err != nil {
-// 		log.Printf("Failed to get users: %v", err)
-// 		c.JSON(http.StatusInternalServerError, gin.H{
-// 			"error": err.Error(),
-// 		})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"users": users,
-// 	})
-// }
