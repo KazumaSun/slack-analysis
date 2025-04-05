@@ -33,19 +33,30 @@ func (h *ConversationHandler) InitializeChannelConversationsHandler(c *gin.Conte
 	// 動作確認用
 	log.Printf("channelID: %s", channelID)
 
-	// チャンネルの会話履歴を初期化
-	err := h.conversationUsecase.InitializeChannelConversations(channelID)
+	// チャンネルの会話履歴を取得してDBに保存
+	allMessages, err := h.conversationUsecase.InitializeChannelConversations(channelID)
 	if err != nil {
-		log.Printf("Failed to initialize users: %v", err)
+		log.Printf("Failed to initialize channel conversations: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+	// err := h.conversationUsecase.InitializeChannelConversations(channelID)
+	// if err != nil {
+	// 	log.Printf("Failed to initialize users: %v", err)
+	// 	c.JSON(http.StatusInternalServerError, gin.H{
+	// 		"error": err.Error(),
+	// 	})
+	// 	return
+	// }
 
 	// 成功した場合のレスポンス
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Users initialized successfully",
+		"message":    "Users initialized successfully",
+		"channel_id": channelID,
+		"status":     "success",
+		"messages":   allMessages,
 	})
 }
 

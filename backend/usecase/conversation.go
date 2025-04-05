@@ -25,7 +25,7 @@ func NewConversationUsecase(repo *repository.Repository, slackTokenBot string) *
 }
 
 // InitializeChannelConversations は指定したチャンネルの会話履歴の初期化を行います
-func (u *ConversationUsecase) InitializeChannelConversations(channelID string) error {
+func (u *ConversationUsecase) InitializeChannelConversations(channelID string) ([]slack.Message, error) {
 	api := slack.New(u.slackTokenBot) // Slack APIの初期化
 	// allConversations := []repository.SlackConversation{}	// 全ての会話を格納するスライス
 	allMessages := []slack.Message{} // 全ての会話を格納するスライス
@@ -69,6 +69,9 @@ func (u *ConversationUsecase) InitializeChannelConversations(channelID string) e
 	for i, message := range allMessages {
 		fmt.Printf("メッセージ %d: %s\n", i+1, message.Text)
 	}
+	return allMessages, nil
+
+	// フロントに返す処理とDBに格納する処理は並列処理でやると良い挑戦になるかも
 	// // 取得した会話履歴をDBに保存
 	// for _, message := range allMessages {
 	// 	if err := u.repo.SaveConversation(message); err != nil {
@@ -77,5 +80,5 @@ func (u *ConversationUsecase) InitializeChannelConversations(channelID string) e
 	// }
 	// conversationsを作成して、それをSaveして、errっていうのもありか
 
-	return nil
+	// return nil
 }
