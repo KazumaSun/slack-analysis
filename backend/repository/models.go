@@ -43,9 +43,7 @@ type SlackChannel struct {
 }
 
 type SlackConversation struct {
-	Messages []struct {
-		User      string `json:"user"`
-		Text      string `json:"text"`
-		Timestamp string `json:"ts"`
-	} `json:"messages"`
+	User      string `json:"user"`
+	Text      string `json:"text"`
+	Timestamp string `json:"ts"`
 }
