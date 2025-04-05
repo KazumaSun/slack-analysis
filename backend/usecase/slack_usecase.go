@@ -4,7 +4,7 @@ package usecase
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -30,7 +30,7 @@ func (u *SlackUsecase) InitializeUsers() error {
 	// Slack APIからユーザーリストを取得
 	users, err := u.fetchSlackUsers()
 	if err != nil {
-		return err
+		return fmt.Errorf("InitializeUsers: failed to fetch slack users: %w", err)
 	}
 
 	// ユーザーをDBに保存
@@ -49,41 +49,57 @@ func (u *SlackUsecase) InitializeUsers() error {
 		}
 		
 		if err := u.repo.SaveUser(user); err != nil {
-			return err
-		}
-	}
-
-	// チャンネル一覧を取得
-	channels, err := u.fetchSlackChannels()
-	if err != nil {
-		return err
-	}
-
-	// フィルタリングとDBへの保存
-	teamKey := 1
-	for _, channel := range channels {
-		// "develop" または "team" を含むチャンネルのみ保存
-		if strings.Contains(channel.Name, "develop") || strings.Contains(channel.Name, "team") {
-			team := repository.Team{
-				ID:          teamKey,
-				ChannelID:   channel.ID,
-				ChannelName: channel.Name,
-			}
-			
-			if err := u.repo.SaveTeam(team); err != nil {
-				return err
-			}
-			
-			teamKey++
+			return fmt.Errorf("InitializeUsers: failed to save user %s (%s): %w", userName, slackUser.ID, err)
 		}
 	}
 
 	return nil
 }
 
-// GetAllUsers はDBからすべてのユーザー情報を取得します
+// InitializeChannels は Slack API からチャンネルリストを取得し、フィルタリングしてDBに保存します (新規追加)
+func (u *SlackUsecase) InitializeChannels() error {
+	// チャンネル一覧を取得
+	channels, err := u.fetchSlackChannels()
+	if err != nil {
+		return fmt.Errorf("InitializeChannels: failed to fetch slack channels: %w", err)
+	}
+
+	// フィルタリングとDBへの保存
+	for _, channel := range channels {
+		// "develop" または "team" を含むチャンネルのみ保存
+		if strings.Contains(channel.Name, "develop") || strings.Contains(channel.Name, "team") {
+			team := repository.Team{
+				// ID:          teamKey, // DB が SERIAL で自動生成するなら不要
+				ChannelID:   channel.ID,
+				ChannelName: channel.Name,
+			}
+			// SaveTeam メソッドも ID を引数に取らないように修正が必要かも
+			if err := u.repo.SaveTeam(team); err != nil {
+				return fmt.Errorf("InitializeChannels: failed to save team %s (%s): %w", channel.Name, channel.ID, err)
+			}
+			// teamKey++ // ID を連番で振る場合
+		}
+	}
+	return nil
+}
+
+// GetAllUsers はDBからすべてのユーザー情報を取得します (変更なし)
 func (u *SlackUsecase) GetAllUsers() ([]repository.User, error) {
-	return u.repo.GetAllUsers()
+	users, err := u.repo.GetAllUsers()
+	if err != nil {
+		// Usecase層でもエラーをラップするとトレースしやすい
+		return nil, fmt.Errorf("GetAllUsers: failed to get users from repository: %w", err)
+	}
+	return users, nil
+}
+
+// GetAllChannels はDBからすべてのチーム（チャンネル）情報を取得します (新規追加)
+func (u *SlackUsecase) GetAllChannels() ([]repository.Team, error) {
+	teams, err := u.repo.GetAllTeams()
+	if err != nil {
+		return nil, fmt.Errorf("GetAllChannels: failed to get teams from repository: %w", err)
+	}
+	return teams, nil
 }
 
 // fetchSlackUsers はSlack APIからユーザーリストを取得します
@@ -102,7 +118,7 @@ func (u *SlackUsecase) fetchSlackUsers() ([]repository.SlackUser, error) {
 	}
 	defer resp.Body.Close()
 	
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +161,7 @@ func (u *SlackUsecase) fetchSlackChannels() ([]repository.SlackChannel, error) {
 	}
 	defer resp.Body.Close()
 	
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
