@@ -14,19 +14,6 @@ RUN go build -tags netgo -ldflags '-s -w' -o app
 # 実行環境
 FROM debian:bullseye-slim
 
-# 必要なツールをインストール
-RUN apt-get update && apt-get install -y wget build-essential gawk bison python3 && \
-    wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
-    tar -xvzf glibc-2.34.tar.gz && \
-    cd glibc-2.34 && \
-    mkdir build && cd build && \
-    ../configure --prefix=/opt/glibc-2.34 && \
-    make -j$(nproc) && make install && \
-    rm -rf /glibc-2.34*
-
-# GLIBC を使用するように設定
-ENV LD_LIBRARY_PATH=/opt/glibc-2.34/lib:$LD_LIBRARY_PATH
-
 WORKDIR /app
 COPY --from=builder /app/app .
 EXPOSE 8080
