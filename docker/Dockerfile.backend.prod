@@ -12,9 +12,13 @@ COPY backend/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -tags netgo -ldflags '-s -w' -o app
 
 # 実行環境
-FROM scratch
+FROM debian:bullseye-slim
 
 WORKDIR /app
+
+# CA証明書をインストール
+RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates
+
 COPY --from=builder /app/app .
 EXPOSE 8080
 CMD ["./app"]
