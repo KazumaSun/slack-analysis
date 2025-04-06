@@ -8,11 +8,11 @@ RUN go mod download
 
 COPY backend/ .
 
-# 本番用ビルド
-RUN go build -tags netgo -ldflags '-s -w' -o app
+# 静的リンクで本番用ビルド
+RUN CGO_ENABLED=0 GOOS=linux go build -tags netgo -ldflags '-s -w' -o app
 
 # 実行環境
-FROM debian:bullseye-slim
+FROM scratch
 
 WORKDIR /app
 COPY --from=builder /app/app .
