@@ -182,3 +182,16 @@ func (u *SlackUsecase) fetchSlackChannels() ([]repository.SlackChannel, error) {
 	
 	return result.Channels, nil
 }
+
+// UpdateUser は指定されたIDのユーザー情報を更新します (新規追加)
+func (u *SlackUsecase) UpdateUser(id int, user repository.User) error {
+	// ここでビジネスロジック（バリデーションなど）を追加することも可能
+
+	// RepositoryのUpdateUserメソッドを呼び出す
+	err := u.repo.UpdateUser(id, user)
+	if err != nil {
+		// エラーをラップして返す
+		return fmt.Errorf("failed to update user in repository (id: %d): %w", id, err)
+	}
+	return nil
+}
