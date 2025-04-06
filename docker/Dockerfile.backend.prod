@@ -15,7 +15,7 @@ RUN go build -tags netgo -ldflags '-s -w' -o app
 FROM debian:bullseye-slim
 
 # 必要なツールをインストール
-RUN apt-get update && apt-get install -y wget build-essential && \
+RUN apt-get update && apt-get install -y wget build-essential gawk bison python3 && \
     wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     tar -xvzf glibc-2.34.tar.gz && \
     cd glibc-2.34 && \
