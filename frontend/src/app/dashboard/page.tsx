@@ -21,6 +21,7 @@ import {
 import dayjs from "dayjs"
 import isBetween from "dayjs/plugin/isBetween"
 import { Channel, History, User } from "@/type"
+import { API_BASE_URL } from "@/constants"
 
 dayjs.extend(isBetween)
 import { SelectChangeEvent } from "@mui/material/Select"
@@ -51,13 +52,13 @@ export default function DashboardPage() {
     const fetchInitialData = async () => {
       try {
         // ユーザー情報を取得
-        const usersResponse = await fetch("http://localhost:8080/users")
+        const usersResponse = await fetch(`${API_BASE_URL}/users`)
         if (!usersResponse.ok) throw new Error("Failed to fetch users")
         const usersData = await usersResponse.json()
         setUsers(usersData.users)
 
         // チャンネル情報を取得
-        const channelsResponse = await fetch("http://localhost:8080/channels")
+        const channelsResponse = await fetch(`${API_BASE_URL}/channels`)
         if (!channelsResponse.ok) throw new Error("Failed to fetch channels")
         const channelsData = await channelsResponse.json()
         const channelsArray = Array.isArray(channelsData.channels) ? channelsData.channels : []
@@ -81,7 +82,7 @@ export default function DashboardPage() {
 
     const fetchChannelHistory = async () => {
       try {
-        const historyResponse = await fetch(`http://localhost:8080/history/${selectedChannel}`)
+        const historyResponse = await fetch(`${API_BASE_URL}/history/${selectedChannel}`)
         if (!historyResponse.ok) throw new Error(`Failed to fetch history for channel ${selectedChannel}`)
         const channelHistory = await historyResponse.json()
         setFilteredHistory(channelHistory.messages)
