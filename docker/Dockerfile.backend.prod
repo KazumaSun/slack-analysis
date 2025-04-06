@@ -2,14 +2,31 @@ FROM golang:1.23.3 AS builder
 
 WORKDIR /app
 
+# 必要なファイルをコピー
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
 COPY backend/ .
 
+# 本番用ビルド
 RUN go build -tags netgo -ldflags '-s -w' -o app
 
+# 実行環境
 FROM debian:bullseye-slim
+
+# GLIBC のインストール
+RUN apt-get update && apt-get install -y wget && \
+    wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
+    tar -xvzf glibc-2.34.tar.gz && \
+    cd glibc-2.34 && \
+    mkdir build && cd build && \
+    ../configure --prefix=/opt/glibc-2.34 && \
+    make -j$(nproc) && make install && \
+    rm -rf /glibc-2.34*
+
+# GLIBC を使用するように設定
+ENV LD_LIBRARY_PATH=/opt/glibc-2.34/lib:$LD_LIBRARY_PATH
+
 WORKDIR /app
 COPY --from=builder /app/app .
 EXPOSE 8080
