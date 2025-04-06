@@ -1,0 +1,18 @@
+FROM node:23 AS builder
+
+WORKDIR /app
+
+# 必要なファイルをコピーして依存関係をインストール
+COPY frontend/package*.json ./
+RUN npm install
+
+COPY frontend/ .
+
+# 本番用ビルド
+RUN npm run build:prod
+
+# 実行環境
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
