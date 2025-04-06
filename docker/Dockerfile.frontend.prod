@@ -8,6 +8,9 @@ RUN npm install
 
 COPY frontend/ .
 
+# 環境変数の確認
+RUN echo "NEXT_PUBLIC_API_BASE_URL: $NEXT_PUBLIC_API_BASE_URL"
+
 # 静的ファイルを生成
 RUN npm run build
 
