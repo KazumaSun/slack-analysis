@@ -14,8 +14,8 @@ RUN go build -tags netgo -ldflags '-s -w' -o app
 # 実行環境
 FROM debian:bullseye-slim
 
-# GLIBC のインストール
-RUN apt-get update && apt-get install -y wget && \
+# 必要なツールをインストール
+RUN apt-get update && apt-get install -y wget build-essential && \
     wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     tar -xvzf glibc-2.34.tar.gz && \
     cd glibc-2.34 && \
