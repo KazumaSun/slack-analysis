@@ -3,6 +3,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 )
 
@@ -122,4 +123,41 @@ func (r *Repository) GetAllTeams() ([]Team, error) {
 
 
 	return teams, nil
+}
+
+// UpdateUser は指定されたIDのユーザー情報を更新します (新規追加)
+func (r *Repository) UpdateUser(id int, user User) error {
+	// user_key は通常更新しないことが多いが、リクエストに含まれるなら更新対象に入れる
+	// もし user_key を更新したくない場合は SET 句から user_key = $2 を削除し、引数の順番も調整する
+	query := `
+		UPDATE users
+		SET user_key = $2, user_name = $3, grade = $4, team_key = $5
+		WHERE id = $1
+	`
+
+	// Exec を実行し、結果を取得
+	result, err := r.db.Exec(query, id, user.UserKey, user.UserName, user.Grade, user.TeamKey)
+	if err != nil {
+		log.Printf("Failed to execute update user query (id: %d): %v", id, err)
+		return fmt.Errorf("database error executing update query for id %d: %w", id, err) // エラーラップ
+	}
+
+	// 更新された行数を取得 (任意だが、更新が成功したか確認できる)
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Failed to get rows affected for update user (id: %d): %v", id, err)
+		// RowsAffected のエラーは続行しても良い場合もあるが、ここではエラーとして返す
+		return fmt.Errorf("database error getting rows affected for id %d: %w", id, err)
+	}
+
+	// 更新対象のIDが存在せず、更新が行われなかった場合
+	if rowsAffected == 0 {
+		log.Printf("No user found with id %d to update", id)
+		// ここでエラーを返すか、成功として扱うかは要件による
+		// 例: 存在しないIDの場合はエラーとする
+		return fmt.Errorf("no user found with id %d", id) // エラーとして返す例
+	}
+
+	log.Printf("Successfully updated user with id %d", id)
+	return nil
 }
